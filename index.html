@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172b25"><title>Abrir Celtic Tribes</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101a17;color:#f4f6f2;font:16px system-ui}
+main{box-sizing:border-box;width:min(92vw,480px);padding:28px;border:1px solid #385448;border-radius:20px;background:#192923;text-align:center}
+.mark{font-size:42px}h1{font-size:24px}.data{margin:22px 0;padding:14px;border-radius:12px;background:#102019;text-align:left}.data div{margin:7px 0}
+button{width:100%;padding:15px;border:0;border-radius:12px;background:#b8d36a;color:#172016;font-size:17px;font-weight:750}
+.small{font-size:13px;color:#aebdb4;line-height:1.5}
+</style></head><body><main><div class="mark">🏰</div><h1>Fortaleza de Celtic Tribes</h1><p id="status">Preparando la apertura…</p>
+<section class="data"><div><b>Fortaleza:</b> <span id="fort"></span></div><div><b>Jugador:</b> <span id="player"></span></div><div><b>Coordenadas:</b> <span id="coords"></span></div><div><b>Servidor:</b> <span id="world"></span></div></section>
+<button id="open">ABRIR EN CELTIC TRIBES</button><p class="small">Si no se abre automáticamente, pulsa el botón. Debes tener Celtic Tribes instalado.</p></main>
+<script>
+(()=>{const p=new URLSearchParams(location.search),x=p.get('x')||'16265',y=p.get('y')||'16428',w=p.get('world')||'74';
+document.getElementById('fort').textContent=p.get('fort')||'Fortaleza libre 19300';
+document.getElementById('player').textContent=p.get('player')||'Señor libre 19300';
+document.getElementById('coords').textContent=x+', '+y;document.getElementById('world').textContent=w;
+const link=`xy.clts://coordinates?${encodeURIComponent(x)},${encodeURIComponent(y)}&${encodeURIComponent(w)}`;
+let tried=false;function launch(){tried=true;document.getElementById('status').textContent='Intentando abrir Celtic Tribes…';location.href=link;setTimeout(()=>{document.getElementById('status').textContent='Si sigues aquí, pulsa el botón para volver a intentarlo.'},1400)}
+document.getElementById('open').addEventListener('click',launch);
+setTimeout(()=>{if(!tried)launch()},400);
+})();
+</script></body></html>
