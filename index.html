@@ -1,22 +1,98 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#172b25"><title>Abrir Celtic Tribes</title>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#172b25">
+<title>Generador de enlaces · Celtic Tribes</title>
 <style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101a17;color:#f4f6f2;font:16px system-ui}
-main{box-sizing:border-box;width:min(92vw,480px);padding:28px;border:1px solid #385448;border-radius:20px;background:#192923;text-align:center}
-.mark{font-size:42px}h1{font-size:24px}.data{margin:22px 0;padding:14px;border-radius:12px;background:#102019;text-align:left}.data div{margin:7px 0}
-button{width:100%;padding:15px;border:0;border-radius:12px;background:#b8d36a;color:#172016;font-size:17px;font-weight:750}
-.small{font-size:13px;color:#aebdb4;line-height:1.5}
-</style></head><body><main><div class="mark">🏰</div><h1>Fortaleza de Celtic Tribes</h1><p id="status">Preparando la apertura…</p>
-<section class="data"><div><b>Fortaleza:</b> <span id="fort"></span></div><div><b>Jugador:</b> <span id="player"></span></div><div><b>Coordenadas:</b> <span id="coords"></span></div><div><b>Servidor:</b> <span id="world"></span></div></section>
-<button id="open">ABRIR EN CELTIC TRIBES</button><p class="small">Si no se abre automáticamente, pulsa el botón. Debes tener Celtic Tribes instalado.</p></main>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#101a17;color:#f4f6f2}
+main{width:min(100%,560px);padding:26px;border:1px solid #385448;border-radius:20px;background:#192923}
+header{text-align:center}.mark{font-size:40px}h1{font-size:24px;margin:8px 0}p{color:#c2d0c8;line-height:1.5}
+label{display:block;font-weight:650;margin:16px 0 7px}
+textarea,input{width:100%;padding:13px;border:1px solid #456153;border-radius:10px;background:#102019;color:#fff;font:inherit}
+textarea{min-height:104px;resize:vertical}
+button{border:0;border-radius:11px;padding:13px 16px;font:inherit;font-weight:750;cursor:pointer}
+.primary{width:100%;margin-top:14px;background:#b8d36a;color:#172016}
+.secondary{background:#294238;color:#e9f3ed}
+.output{margin-top:20px;padding:15px;border-radius:12px;background:#102019;overflow-wrap:anywhere}
+.output a{color:#d4e99a}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.row button{flex:1}
+.error{color:#ffb6a9}.hint{font-size:13px;color:#aebdb4}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<header><div class="mark">🏰</div><h1>Generador de enlaces Celtic Tribes</h1>
+<p>Pega el enlace original del juego y conviértelo en un enlace HTTPS para compartir por WhatsApp.</p></header>
+
+<label for="original">Enlace original de Celtic Tribes</label>
+<textarea id="original" placeholder="Ejemplo: xy.clts://coordinates?16265,16428&74"></textarea>
+
+<button class="primary" id="generate">GENERAR ENLACE PARA WHATSAPP</button>
+<p class="hint">También puedes pegar el enlace original completo copiado desde el juego. No necesitas escribir las coordenadas por separado.</p>
+
+<section id="result" class="output hidden" aria-live="polite">
+<strong>Tu enlace para compartir</strong>
+<p id="summary"></p>
+<a id="generated" href="#" target="_blank" rel="noopener"></a>
+<div class="row">
+<button class="primary" id="copy">COPIAR ENLACE</button>
+<button class="secondary" id="open">PROBAR ENLACE</button>
+</div>
+</section>
+<p id="error" class="error hidden" role="alert"></p>
+</main>
 <script>
-(()=>{const p=new URLSearchParams(location.search),x=p.get('x')||'16265',y=p.get('y')||'16428',w=p.get('world')||'74';
-document.getElementById('fort').textContent=p.get('fort')||'Fortaleza libre 19300';
-document.getElementById('player').textContent=p.get('player')||'Señor libre 19300';
-document.getElementById('coords').textContent=x+', '+y;document.getElementById('world').textContent=w;
-const link=`xy.clts://coordinates?${encodeURIComponent(x)},${encodeURIComponent(y)}&${encodeURIComponent(w)}`;
-let tried=false;function launch(){tried=true;document.getElementById('status').textContent='Intentando abrir Celtic Tribes…';location.href=link;setTimeout(()=>{document.getElementById('status').textContent='Si sigues aquí, pulsa el botón para volver a intentarlo.'},1400)}
-document.getElementById('open').addEventListener('click',launch);
-setTimeout(()=>{if(!tried)launch()},400);
+(() => {
+ const input=document.getElementById('original');
+ const result=document.getElementById('result');
+ const error=document.getElementById('error');
+ const generated=document.getElementById('generated');
+ const summary=document.getElementById('summary');
+ let finalUrl='';
+
+ function parseLink(raw){
+   const s=raw.trim();
+   // Formato conocido: xy.clts://coordinates?X,Y&SERVER
+   let m=s.match(/xy\.clts:\/\/coordinates\?(-?\d+)\s*,\s*(-?\d+)\s*&\s*(\d+)/i);
+   if(m) return {x:m[1],y:m[2],world:m[3]};
+   // Permite enlaces que ya incluyan los parámetros x, y y world.
+   try{
+     const u=new URL(s);
+     const x=u.searchParams.get('x'), y=u.searchParams.get('y');
+     const world=u.searchParams.get('world')||u.searchParams.get('server');
+     if(x!==null&&y!==null&&world!==null&&/^-?\d+$/.test(x)&&/^-?\d+$/.test(y)&&/^\d+$/.test(world))
+       return {x,y,world};
+   }catch(e){}
+   return null;
+ }
+ function makeUrl(data){
+   const base=location.href.split('?')[0].split('#')[0];
+   const q=new URLSearchParams({x:data.x,y:data.y,world:data.world});
+   return base+'?'+q.toString();
+ }
+ document.getElementById('generate').addEventListener('click',()=>{
+   error.classList.add('hidden');result.classList.add('hidden');
+   const data=parseLink(input.value);
+   if(!data){
+     error.textContent='No pude reconocer el formato. Pega un enlace como: xy.clts://coordinates?16265,16428&74';
+     error.classList.remove('hidden');return;
+   }
+   finalUrl=makeUrl(data);
+   summary.textContent=`Coordenadas ${data.x}, ${data.y} · Servidor ${data.world}`;
+   generated.textContent=finalUrl;generated.href=finalUrl;
+   result.classList.remove('hidden');
+ });
+ document.getElementById('copy').addEventListener('click',async()=>{
+   try{await navigator.clipboard.writeText(finalUrl);document.getElementById('copy').textContent='¡ENLACE COPIADO!';}
+   catch(e){window.prompt('Copia este enlace:',finalUrl);}
+ });
+ document.getElementById('open').addEventListener('click',()=>{if(finalUrl)location.href=finalUrl;});
 })();
-</script></body></html>
+</script>
+</body>
+</html>
