@@ -4,95 +4,120 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172b25">
-<title>Generador de enlaces · Celtic Tribes</title>
+<title>Generador múltiple · Celtic Tribes</title>
 <style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#101a17;color:#f4f6f2}
-main{width:min(100%,560px);padding:26px;border:1px solid #385448;border-radius:20px;background:#192923}
-header{text-align:center}.mark{font-size:40px}h1{font-size:24px;margin:8px 0}p{color:#c2d0c8;line-height:1.5}
-label{display:block;font-weight:650;margin:16px 0 7px}
-textarea,input{width:100%;padding:13px;border:1px solid #456153;border-radius:10px;background:#102019;color:#fff;font:inherit}
-textarea{min-height:104px;resize:vertical}
-button{border:0;border-radius:11px;padding:13px 16px;font:inherit;font-weight:750;cursor:pointer}
-.primary{width:100%;margin-top:14px;background:#b8d36a;color:#172016}
-.secondary{background:#294238;color:#e9f3ed}
-.output{margin-top:20px;padding:15px;border-radius:12px;background:#102019;overflow-wrap:anywhere}
-.output a{color:#d4e99a}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.row button{flex:1}
-.error{color:#ffb6a9}.hint{font-size:13px;color:#aebdb4}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;background:#101a17;color:#f4f6f2}
+main{width:min(100%,720px);padding:24px;border:1px solid #385448;border-radius:20px;background:#192923}
+header{text-align:center}.mark{font-size:40px}h1{font-size:25px;margin:7px 0}p{color:#c2d0c8;line-height:1.5}
+label{display:block;font-weight:700;margin:16px 0 7px}
+textarea,input{width:100%;padding:12px;border:1px solid #456153;border-radius:10px;background:#102019;color:#fff;font:inherit}
+textarea{min-height:190px;resize:vertical}
+button{border:0;border-radius:10px;padding:12px 15px;font:inherit;font-weight:750;cursor:pointer}
+.primary{background:#b8d36a;color:#172016}.secondary{background:#294238;color:#e9f3ed}
+.full{width:100%;margin-top:12px}.hint{font-size:13px;color:#aebdb4}
+.error{color:#ffb6a9}.success{color:#cce88c}
+.results{margin-top:22px;display:grid;gap:12px}
+.item{background:#102019;border:1px solid #385448;border-radius:12px;padding:14px}
+.item h3{margin:0 0 8px;font-size:17px}.meta{font-size:14px;color:#c2d0c8;line-height:1.6}
+.url{display:block;margin-top:8px;overflow-wrap:anywhere;color:#d4e99a;font-size:13px}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.actions button{flex:1}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.top-actions button{flex:1}
 .hidden{display:none}
 </style>
 </head>
 <body>
 <main>
-<header><div class="mark">🏰</div><h1>Generador de enlaces Celtic Tribes</h1>
-<p>Pega el enlace original del juego y conviértelo en un enlace HTTPS para compartir por WhatsApp.</p></header>
+<header><div class="mark">🏰</div><h1>Generador múltiple de Celtic Tribes</h1>
+<p>Pega varios enlaces originales. Puedes incluir también los nombres de la fortaleza y del jugador: el generador los conservará en el mensaje para WhatsApp.</p></header>
 
-<label for="original">Enlace original de Celtic Tribes</label>
-<textarea id="original" placeholder="Ejemplo: xy.clts://coordinates?16265,16428&74"></textarea>
+<label for="bulk">Enlaces y datos (uno o varios)</label>
+<textarea id="bulk" placeholder="Fortaleza: Fortaleza libre 19300
+Jugador: Señor libre 19300
+xy.clts://coordinates?16265,16428&74
 
-<button class="primary" id="generate">GENERAR ENLACE PARA WHATSAPP</button>
-<p class="hint">También puedes pegar el enlace original completo copiado desde el juego. No necesitas escribir las coordenadas por separado.</p>
+Fortaleza: Fortaleza del Norte
+Jugador: Guerrero
+xy.clts://coordinates?15000,17000&74"></textarea>
+<p class="hint">Puedes pegar bloques con Fortaleza:, Jugador: y el enlace xy.clts://. Si solo pegas el enlace, se generarán igualmente las coordenadas y el servidor.</p>
+<button class="primary full" id="generate">GENERAR TODOS LOS ENLACES</button>
+<p id="message" class="hint" aria-live="polite"></p>
 
-<section id="result" class="output hidden" aria-live="polite">
-<strong>Tu enlace para compartir</strong>
-<p id="summary"></p>
-<a id="generated" href="#" target="_blank" rel="noopener"></a>
-<div class="row">
-<button class="primary" id="copy">COPIAR ENLACE</button>
-<button class="secondary" id="open">PROBAR ENLACE</button>
-</div>
+<section id="out" class="hidden">
+  <div class="top-actions">
+    <button class="primary" id="copyAll">COPIAR TODO PARA WHATSAPP</button>
+    <button class="secondary" id="copyLinks">COPIAR SOLO LOS LINKS</button>
+  </div>
+  <div id="results" class="results"></div>
 </section>
-<p id="error" class="error hidden" role="alert"></p>
 </main>
 <script>
 (() => {
- const input=document.getElementById('original');
- const result=document.getElementById('result');
- const error=document.getElementById('error');
- const generated=document.getElementById('generated');
- const summary=document.getElementById('summary');
- let finalUrl='';
+ const source=document.getElementById('bulk');
+ const out=document.getElementById('out');
+ const results=document.getElementById('results');
+ const message=document.getElementById('message');
+ let entries=[];
 
- function parseLink(raw){
-   const s=raw.trim();
-   // Formato conocido: xy.clts://coordinates?X,Y&SERVER
-   let m=s.match(/xy\.clts:\/\/coordinates\?(-?\d+)\s*,\s*(-?\d+)\s*&\s*(\d+)/i);
-   if(m) return {x:m[1],y:m[2],world:m[3]};
-   // Permite enlaces que ya incluyan los parámetros x, y y world.
-   try{
-     const u=new URL(s);
-     const x=u.searchParams.get('x'), y=u.searchParams.get('y');
-     const world=u.searchParams.get('world')||u.searchParams.get('server');
-     if(x!==null&&y!==null&&world!==null&&/^-?\d+$/.test(x)&&/^-?\d+$/.test(y)&&/^\d+$/.test(world))
-       return {x,y,world};
-   }catch(e){}
-   return null;
+ function parseBlocks(text){
+   const lines=text.split(/\r?\n/);
+   const found=[];
+   let fort='',player='';
+   for(const raw of lines){
+     const line=raw.trim();
+     if(!line){continue;}
+     const f=line.match(/^fortaleza\s*:\s*(.+)$/i);
+     if(f){fort=f[1].trim();continue;}
+     const p=line.match(/^jugador\s*:\s*(.+)$/i);
+     if(p){player=p[1].trim();continue;}
+     const m=line.match(/xy\.clts:\/\/coordinates\?(-?\d+)\s*,\s*(-?\d+)\s*&\s*(\d+)/i);
+     if(m){
+       found.push({fort:fort||'Fortaleza sin nombre',player:player||'Jugador sin nombre',x:m[1],y:m[2],world:m[3]});
+       fort='';player='';
+     }
+   }
+   return found;
  }
- function makeUrl(data){
+ function createUrl(e){
    const base=location.href.split('?')[0].split('#')[0];
-   const q=new URLSearchParams({x:data.x,y:data.y,world:data.world});
-   return base+'?'+q.toString();
+   return base+'?'+new URLSearchParams({x:e.x,y:e.y,world:e.world}).toString();
+ }
+ function render(){
+   results.innerHTML='';
+   entries.forEach((e,i)=>{
+     const url=createUrl(e);
+     const card=document.createElement('article');card.className='item';
+     const title=document.createElement('h3');title.textContent=`${i+1}. ${e.fort}`;
+     const meta=document.createElement('div');meta.className='meta';
+     meta.textContent=`Jugador: ${e.player} · Coordenadas: ${e.x}, ${e.y} · Servidor: ${e.world}`;
+     const link=document.createElement('a');link.className='url';link.href=url;link.target='_blank';link.rel='noopener';link.textContent=url;
+     const actions=document.createElement('div');actions.className='actions';
+     const copy=document.createElement('button');copy.className='secondary';copy.textContent='COPIAR ESTE LINK';
+     copy.addEventListener('click',()=>copyText(url,copy));
+     const test=document.createElement('button');test.className='secondary';test.textContent='PROBAR';
+     test.addEventListener('click',()=>location.href=url);
+     actions.append(copy,test);card.append(title,meta,link,actions);results.append(card);
+   });
+ }
+ async function copyText(value,button){
+   try{await navigator.clipboard.writeText(value);const old=button.textContent;button.textContent='¡COPIADO!';setTimeout(()=>button.textContent=old,1800);}
+   catch(e){window.prompt('Copia el texto:',value);}
  }
  document.getElementById('generate').addEventListener('click',()=>{
-   error.classList.add('hidden');result.classList.add('hidden');
-   const data=parseLink(input.value);
-   if(!data){
-     error.textContent='No pude reconocer el formato. Pega un enlace como: xy.clts://coordinates?16265,16428&74';
-     error.classList.remove('hidden');return;
-   }
-   finalUrl=makeUrl(data);
-   summary.textContent=`Coordenadas ${data.x}, ${data.y} · Servidor ${data.world}`;
-   generated.textContent=finalUrl;generated.href=finalUrl;
-   result.classList.remove('hidden');
+   entries=parseBlocks(source.value);
+   results.innerHTML='';out.classList.add('hidden');
+   if(!entries.length){message.textContent='No encontré enlaces válidos. Revisa que cada uno tenga el formato xy.clts://coordinates?X,Y&SERVIDOR.';message.className='error';return;}
+   render();out.classList.remove('hidden');
+   message.textContent=`${entries.length} enlace(s) detectado(s) y listo(s) para compartir.`;message.className='success';
  });
- document.getElementById('copy').addEventListener('click',async()=>{
-   try{await navigator.clipboard.writeText(finalUrl);document.getElementById('copy').textContent='¡ENLACE COPIADO!';}
-   catch(e){window.prompt('Copia este enlace:',finalUrl);}
+ document.getElementById('copyAll').addEventListener('click',()=>{
+   const text=entries.map((e,i)=>`${i+1}. 🏰 ${e.fort}\n👤 Jugador: ${e.player}\n📍 Coordenadas: ${e.x}, ${e.y}\n🌍 Servidor: ${e.world}\n🔗 ${createUrl(e)}`).join('\n\n');
+   copyText(text,document.getElementById('copyAll'));
  });
- document.getElementById('open').addEventListener('click',()=>{if(finalUrl)location.href=finalUrl;});
+ document.getElementById('copyLinks').addEventListener('click',()=>{
+   copyText(entries.map(createUrl).join('\n'),document.getElementById('copyLinks'));
+ });
 })();
 </script>
-</body>
-</html>
+</body></html>
